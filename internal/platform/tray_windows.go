@@ -52,6 +52,7 @@ const (
 	nifTip     = 0x00000004
 
 	idiApplication = 32512
+	trayIconID     = 1
 	imageIcon      = 1
 	lrLoadFromFile = 0x00000010
 	lrDefaultSize  = 0x00000040
@@ -330,8 +331,14 @@ func Notice(title, text string) {
 	procMessageBox.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), mbOK|mbIconInfo)
 }
 
-// loadTrayIcon 优先加载 exe 同目录的 icon.ico，缺失时用系统默认图标
+// loadTrayIcon 优先读 exe 自身编入的图标资源（cmd/portico/rsrc_windows_*.syso），
+// 其次兼容旧部署的同目录 icon.ico，都没有时用系统默认图标
 func loadTrayIcon() syscall.Handle {
+	if hInst, _, _ := procGetModuleHandle.Call(0); hInst != 0 {
+		if h, _, _ := procLoadImage.Call(hInst, trayIconID, imageIcon, 0, 0, lrDefaultSize); h != 0 {
+			return syscall.Handle(h)
+		}
+	}
 	if exe, err := os.Executable(); err == nil {
 		p, err := syscall.UTF16PtrFromString(filepath.Join(filepath.Dir(exe), "icon.ico"))
 		if err == nil {

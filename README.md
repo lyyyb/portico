@@ -36,14 +36,13 @@ Portico 用 Go 编译成单个 exe，内置静态服务器和管理页面。目�
 
 ### 直接使用
 
-1. 准备一个可写目录，放入 `portico.exe` 和 `icon.ico`（不要放在 `C:\Program Files` 这类需要管理员权限的位置）。
+1. 准备一个可写目录，放入 `portico.exe`（图标与版本信息已编入，无需额外文件；不要放在 `C:\Program Files` 这类需要管理员权限的位置）。
 2. 双击 `portico.exe`，浏览器会自动打开启动器页面。
 3. 把前端 `dist` 里的内容放到 `apps/<项目名>/`，刷新页面即可看到卡片。
 
 ```
 Portico/
 ├─ portico.exe
-├─ icon.ico
 ├─ apps/
 │  ├─ 订单系统/
 │  │  ├─ index.html
@@ -192,7 +191,7 @@ portico/
 │  └─ version/                  版本号
 ├─ assets/                      Logo 源文件
 ├─ docs/                        使用手册与截图
-├─ icon.ico                     托盘图标
+├─ icon.ico                     图标源文件（编入 exe 资源）
 └─ apps/                        运行时项目目录
 ```
 
