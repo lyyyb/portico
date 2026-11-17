@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portico</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14.4' fill='%230A9E57'/%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M14.08 53.12V28.16a17.92 17.92 0 0 1 35.84 0v24.96Zm8.64 0V33.28a9.28 9.28 0 0 1 18.56 0v19.84Z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #F7F7F8;
+    --surface: #FFFFFF;
+    --surface-muted: #F0F0F2;
+    --text: #121214;
+    --muted: #6D6D78;
+    --border: rgba(18, 18, 20, 0.09);
+    --border-strong: rgba(18, 18, 20, 0.15);
+    --brand: #0A9E57;
+    --brand-soft: rgba(10, 158, 87, 0.10);
+    --brand-border: rgba(10, 158, 87, 0.38);
+    --glow: rgba(10, 158, 87, 0.09);
+    --shadow: 0 1px 2px rgba(18, 18, 20, 0.04);
+    --shadow-hover: 0 4px 10px rgba(18, 18, 20, 0.05), 0 18px 36px rgba(18, 18, 20, 0.07);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0A0A0B;
+      --surface: #141416;
+      --surface-muted: #1E1E21;
+      --text: #EDEDF0;
+      --muted: #9B9BA6;
+      --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.15);
+      --brand: #32F08C;
+      --brand-soft: rgba(50, 240, 140, 0.10);
+      --brand-border: rgba(50, 240, 140, 0.34);
+      --glow: rgba(50, 240, 140, 0.07);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 18px 36px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  [hidden] { display: none !important; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bg);
+    background-image: radial-gradient(110% 55% at 50% -12%, var(--glow), transparent 62%);
+    color: var(--text);
+    font: 400 14px/1.55 "PingFang SC", "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 24px 28px 20px;
+  }
+
+  .topbar, .hero, .toolbar, footer { flex: 0 0 auto; }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .mark {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: var(--brand);
+  }
+
+  .mark svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+
+  .brand-name {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .chip-live {
+    color: var(--brand);
+    background: var(--brand-soft);
+    border-color: var(--brand-border);
+  }
+
+  .chip-live .dot { background: currentColor; }
+
+  .hero h1 {
+    margin: 0 0 3px;
+    font-size: clamp(20px, 2vw, 24px);
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .lede {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 10px;
+  }
+
+  .toolbar form { margin: 0; }
+
+  .manage-btn {
+    flex: 0 0 auto;
+    height: 38px;
+    padding: 0 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    color: var(--muted);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+  }
+
+  .manage-btn:hover { border-color: var(--border-strong); color: var(--text); }
+
+  .manage-btn[aria-pressed="true"] {
+    background: var(--brand-soft);
+    border-color: var(--brand-border);
+    color: var(--brand);
+  }
+
+  .search {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .search svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .search input {
+    width: 100%;
+    height: 38px;
+    padding: 0 40px 0 35px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .search input::placeholder { color: var(--muted); }
+
+  .search input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-soft);
+  }
+
+  .search kbd {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    color: var(--muted);
+    font: 11px/1 ui-monospace, Consolas, monospace;
+  }
+
+  .scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 4px 8px 14px;
+    margin: -4px -8px -14px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-auto-rows: 1fr;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+    min-width: 0;
+  }
+
+  .item[hidden] { display: none; }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    min-height: 62px;
+    padding: 8px 10px 8px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: var(--brand-border);
+    box-shadow: var(--shadow-hover);
+  }
+
+  .main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 3px 0;
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .main:focus-visible,
+  .stop:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+  }
+
+  form.main { margin: 0; }
+
+  .main .hit {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 10px;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .main .hit:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+  }
+
+  .meta.failed { color: #B42318; }
+
+  .note {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .tools {
+    display: none;
+    width: 100%;
+    gap: 6px;
+    margin-top: 2px;
+    padding-top: 9px;
+    border-top: 1px solid var(--border);
+  }
+
+  .grid.manage .tools { display: flex; }
+
+  .grid.manage .main { pointer-events: none; }
+
+  .tool {
+    padding: 4px 10px;
+    background: var(--surface-muted);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+  }
+
+  .tool:hover { border-color: var(--border-strong); color: var(--text); }
+
+  .tool.on {
+    background: var(--brand-soft);
+    border-color: var(--brand-border);
+    color: var(--brand);
+  }
+
+  .tool:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  dialog {
+    width: min(480px, calc(100vw - 40px));
+    padding: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-hover);
+    color: var(--text);
+  }
+
+  dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+
+  dialog h2 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  dialog p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  dialog textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 10px 12px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font: inherit;
+    resize: vertical;
+    outline: none;
+  }
+
+  dialog textarea:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-soft);
+  }
+
+  dialog label {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  dialog input {
+    display: block;
+    width: 100%;
+    height: 38px;
+    margin-top: 5px;
+    padding: 0 11px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font: inherit;
+    outline: none;
+  }
+
+  dialog input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-soft);
+  }
+
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .dialog-actions button {
+    padding: 7px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .dialog-actions .primary {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #FFFFFF;
+  }
+
+  .dialog-actions .danger {
+    margin-right: auto;
+    color: #B42318;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dialog-actions .danger { color: #F97066; }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .meta.failed { color: #F97066; }
+  }
+
+  .stop {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .stop:hover {
+    background: var(--surface-muted);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+
+  .icon {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: hsl(var(--hue) 64% 95%);
+    box-shadow: inset 0 0 0 1px hsl(var(--hue) 52% 87%);
+    color: hsl(var(--hue) 48% 30%);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .icon {
+      background: hsl(var(--hue) 30% 20%);
+      box-shadow: inset 0 0 0 1px hsl(var(--hue) 28% 26%);
+      color: hsl(var(--hue) 64% 76%);
+    }
+  }
+
+  .icon-img {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: var(--surface-muted);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  .card.problem { border-style: dashed; }
+
+  .meta.problem { color: #B54708; }
+
+  @media (prefers-color-scheme: dark) {
+    .meta.problem { color: #FDB022; }
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .name {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 11.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--brand);
+  }
+
+  .chev {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: var(--muted);
+    transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+  }
+
+  .card:hover .chev {
+    transform: translateX(2px);
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+
+  .noresult {
+    margin: 26px 0 0;
+    color: var(--muted);
+  }
+
+  .empty {
+    margin-top: 38px;
+    padding: 48px 40px;
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: 18px;
+  }
+
+  .empty h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .empty > p {
+    margin: 0 0 28px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .steps {
+    display: grid;
+    gap: 14px;
+    max-width: 580px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .n {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    background: var(--brand-soft);
+    border-radius: 50%;
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .step-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .step-body b {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .step-body span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .step-body a {
+    color: var(--brand);
+    text-decoration: none;
+  }
+
+  code {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 3px 7px;
+    background: var(--surface-muted);
+    border-radius: 6px;
+    color: var(--text);
+    font: 12px/1.6 ui-monospace, Consolas, monospace;
+    word-break: break-all;
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 20px;
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .item {
+      animation: rise 360ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+      animation-delay: calc(var(--i) * 35ms);
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+    }
+  }
+
+  @media (max-width: 720px) {
+    main { padding: 18px 16px 28px; }
+    .topbar { margin-bottom: 14px; }
+    .grid { grid-template-columns: 1fr; }
+    .empty { padding: 32px 22px; }
+  }
+</style>
+</head>
+<body>
+{{define "appicon"}}{{if .Icon}}<img class="icon-img" src="{{.Icon}}" alt="" loading="lazy">{{else}}<span class="icon">{{.Initial}}</span>{{end}}{{end}}
+<main>
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <path fill="#fff" fill-rule="evenodd" d="M14.08 53.12V28.16a17.92 17.92 0 0 1 35.84 0v24.96Zm8.64 0V33.28a9.28 9.28 0 0 1 18.56 0v19.84Z"/>
+        </svg>
+      </span>
+      <span class="brand-name">Portico</span>
+    </div>
+    <div class="stats">
+      <span class="chip">{{.Total}} 个项目</span>
+      <span class="chip chip-live" id="live" {{if not .Started}}hidden{{end}}><span class="dot"></span><span id="live-count">{{.Started}}</span> 个已启动</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1>选择要进入的应用</h1>
+    <p class="lede">全部在本机离线运行，数据不离开这台电脑。</p>
+  </section>
+
+  {{if .Apps}}
+  <div class="toolbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M20 20l-3.5-3.5"></path>
+      </svg>
+      <input id="q" type="search" placeholder="搜索项目" autocomplete="off" spellcheck="false" aria-label="搜索项目">
+      <kbd>/</kbd>
+    </div>
+    <button class="manage-btn" id="manage" type="button" aria-pressed="false">整理</button>
+    <button class="manage-btn" type="button" data-add-link>添加链接</button>
+    <form method="post" action="/open-dir">
+      <button class="manage-btn" type="submit" title="打开 apps 目录">打开目录</button>
+    </form>
+  </div>
+
+  <div class="scroll">
+  <ul class="grid" id="grid">
+    {{range .Apps}}
+    <li class="item" data-name="{{.Name}}" data-key="{{.Key}}" data-program="{{if .Program}}1{{else}}0{{end}}" data-external="{{if .External}}1{{else}}0{{end}}" style="--hue: {{.Hue}}; --i: {{.Index}}">
+      <div class="card{{if .Problem}} problem{{end}}" title="{{if .External}}{{.URL}}{{else}}{{.Dir}}{{end}}">
+        <div class="row">
+        {{if .Problem}}
+        <div class="main">
+          {{template "appicon" .}}
+          <span class="body">
+            <span class="name">{{.Name}}</span>
+            <span class="meta problem" data-role="meta">{{.Problem}}</span>
+            {{if .Note}}<span class="note" title="{{.Note}}">{{.Note}}</span>{{end}}
+          </span>
+        </div>
+        {{else if .External}}
+        <a class="main" href="{{.URL}}" target="_blank" rel="noopener" title="打开 {{.URL}}">
+          {{template "appicon" .}}
+          <span class="body">
+            <span class="name">{{.Name}}</span>
+            <span class="meta" data-role="meta">外部链接{{if .Host}} · {{.Host}}{{end}}</span>
+            {{if .Note}}<span class="note" title="{{.Note}}">{{.Note}}</span>{{end}}
+          </span>
+          <span class="chev" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 6l6 6-6 6"></path>
+            </svg>
+          </span>
+        </a>
+        {{else if .Program}}
+        <form class="main" method="post" action="{{.StartLink}}">
+          <button class="hit" type="submit" aria-label="启动 {{.Name}}">
+            {{template "appicon" .}}
+            <span class="body">
+              <span class="name">{{.Name}}</span>
+              <span class="meta" data-role="meta">{{if .Started}}<span class="dot"></span>运行中{{else}}本地程序 · 点击启动{{end}}</span>
+              {{if .Note}}<span class="note" title="{{.Note}}">{{.Note}}</span>{{end}}
+            </span>
+          </button>
+        </form>
+        <form class="stop-form" method="post" action="{{.StopLink}}" {{if not .Started}}hidden{{end}}>
+          <button type="submit" class="stop" title="停止 {{.Name}}" aria-label="停止 {{.Name}}">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="2.5"></rect>
+            </svg>
+          </button>
+        </form>
+        {{else}}
+        <a class="main" href="{{.Link}}" target="_blank" rel="noopener">
+          {{template "appicon" .}}
+          <span class="body">
+            <span class="name">{{.Name}}</span>
+            <span class="meta" data-role="meta">{{if .Started}}<span class="dot"></span>已启动 · 端口 {{.Port}}{{else}}点击进入{{end}}</span>
+            {{if .Note}}<span class="note" title="{{.Note}}">{{.Note}}</span>{{end}}
+          </span>
+          <span class="chev" aria-hidden="true" {{if .Started}}hidden{{end}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 6l6 6-6 6"></path>
+            </svg>
+          </span>
+        </a>
+        <form class="stop-form" method="post" action="{{.StopLink}}" {{if not .Started}}hidden{{end}}>
+          <button type="submit" class="stop" title="停止 {{.Name}}" aria-label="停止 {{.Name}}">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="2.5"></rect>
+            </svg>
+          </button>
+        </form>
+        {{end}}
+        </div>
+        <div class="tools">
+          <form method="post" action="{{.MoveLink}}">
+            <input type="hidden" name="dir" value="up">
+            <button class="tool" type="submit" title="上移 {{.Name}}">上移</button>
+          </form>
+          <form method="post" action="{{.MoveLink}}">
+            <input type="hidden" name="dir" value="down">
+            <button class="tool" type="submit" title="下移 {{.Name}}">下移</button>
+          </form>
+          <form method="post" action="{{.PinLink}}">
+            <button class="tool{{if .Pin}} on{{end}}" type="submit" title="{{if .Pin}}取消置顶 {{.Name}}{{else}}置顶 {{.Name}}{{end}}">{{if .Pin}}已置顶{{else}}置顶{{end}}</button>
+          </form>
+          {{if .External}}
+          <button class="tool" type="button" data-link-edit="{{.Key}}" data-link-name="{{.Name}}" data-link-url="{{.URL}}" title="编辑 {{.Name}}">编辑</button>
+          {{else}}
+          <button class="tool" type="button" data-edit="{{.NoteLink}}" data-note="{{.Note}}" title="编辑 {{.Name}} 的说明">说明</button>
+          {{end}}
+        </div>
+      </div>
+    </li>
+    {{end}}
+  </ul>
+  <p class="noresult" id="noresult" hidden>没有匹配的项目，换个关键词试试。</p>
+  </div>
+  {{else}}
+  <div class="scroll">
+  <section class="empty">
+    <h2>把项目放进来就能用</h2>
+    <p>无需重启程序，放好后刷新本页即会出现在列表中。</p>
+    <ol class="steps">
+      <li>
+        <span class="n">1</span>
+        <div class="step-body">
+          <b>打开目录</b>
+          <code>{{.AppsPath}}</code>
+          <form method="post" action="/open-dir">
+            <button class="manage-btn" type="submit">打开 apps 目录</button>
+          </form>
+        </div>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <div class="step-body">
+          <b>放入前端打包产物</b>
+          <span>每个项目一个子目录，目录内直接是 index.html</span>
+        </div>
+      </li>
+      <li>
+        <span class="n">3</span>
+        <div class="step-body">
+          <b>刷新本页</b>
+          <span>按 F5 或 <a href="/">重新扫描</a></span>
+        </div>
+      </li>
+    </ol>
+    <button class="manage-btn" type="button" data-add-link style="margin-top: 22px">添加链接</button>
+  </section>
+  </div>
+  {{end}}
+
+  <footer>
+    <span>按 <kbd>/</kbd> 搜索</span>
+    <span>关闭标签页后程序仍在托盘运行</span>
+    <span>Portico v{{.Version}}</span>
+  </footer>
+</main>
+
+<dialog id="editor">
+  <form method="post" id="note-form">
+    <h2>应用说明</h2>
+    <p>保存在启动器同目录的 apps.json，也可以直接编辑这个文件。</p>
+    <textarea name="text" id="note-text" maxlength="500" placeholder="例如：给财务部用的对账工具，每月 5 号前更新"></textarea>
+    <div class="dialog-actions">
+      <button type="button" id="note-cancel">取消</button>
+      <button type="submit" class="primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="link-editor">
+  <form method="post" id="link-form" action="/link">
+    <h2 id="link-title">添加链接</h2>
+    <p>链接卡片只做跳转，不参与启动和停止，保存在启动器同目录的 apps.json。</p>
+    <label>名称
+      <input name="name" id="link-name" maxlength="60" autocomplete="off" placeholder="不填则用域名">
+    </label>
+    <label>地址
+      <input name="url" id="link-url" required autocomplete="off" spellcheck="false" placeholder="https://example.com">
+    </label>
+    <div class="dialog-actions">
+      <button type="submit" class="danger" id="link-delete" form="link-delete-form" hidden>删除</button>
+      <button type="button" id="link-cancel">取消</button>
+      <button type="submit" class="primary">保存</button>
+    </div>
+  </form>
+  <form method="post" id="link-delete-form"></form>
+</dialog>
+
+<script>
+  (function () {
+    var input = document.getElementById('q');
+    if (!input) return;
+
+    var items = Array.prototype.slice.call(document.querySelectorAll('.item'));
+    var noresult = document.getElementById('noresult');
+
+    function apply() {
+      var kw = input.value.trim().toLowerCase();
+      var shown = 0;
+      items.forEach(function (el) {
+        var hit = !kw || (el.dataset.name || '').toLowerCase().indexOf(kw) !== -1;
+        el.hidden = !hit;
+        if (hit) shown++;
+      });
+      noresult.hidden = shown > 0;
+    }
+
+    input.addEventListener('input', apply);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === '/' && document.activeElement !== input) {
+        e.preventDefault();
+        input.focus();
+        return;
+      }
+      if (e.key === 'Escape') {
+        input.value = '';
+        apply();
+        input.blur();
+        return;
+      }
+      if (e.key === 'Enter' && document.activeElement === input) {
+        var first = items.filter(function (el) { return !el.hidden; })[0];
+        var link = first && first.querySelector('a');
+        if (link) window.open(link.href, '_blank', 'noopener');
+      }
+    });
+  })();
+
+  // 全部项目：轮询运行状态，直接在卡片和顶部计数上更新，静态项目也能同步
+  (function () {
+    var items = Array.prototype.slice.call(document.querySelectorAll('.item'));
+    if (!items.length) return;
+
+    var chip = document.getElementById('live');
+    var count = document.getElementById('live-count');
+
+    function paint(el, app) {
+      var meta = el.querySelector('[data-role="meta"]');
+      var stop = el.querySelector('.stop-form');
+      var chev = el.querySelector('.chev');
+      if (!meta) return;
+      if (el.dataset.external === '1') return;
+
+      if (app.problem) {
+        meta.className = 'meta problem';
+        meta.textContent = app.problem;
+        if (stop) stop.hidden = true;
+        if (chev) chev.hidden = true;
+        return;
+      }
+
+      if (app.state === 'failed') {
+        meta.className = 'meta failed';
+        meta.textContent = '启动失败：' + (app.error || '未知原因');
+      } else if (el.dataset.program === '1') {
+        meta.className = 'meta';
+        if (app.state === 'running') {
+          meta.innerHTML = '<span class="dot"></span>运行中' + (app.pid ? ' · PID ' + app.pid : '');
+        } else if (app.state === 'starting') {
+          meta.textContent = '启动中…';
+        } else {
+          meta.textContent = '本地程序 · 点击启动';
+        }
+      } else {
+        meta.className = 'meta';
+        if (app.state === 'running') {
+          meta.innerHTML = '<span class="dot"></span>已启动' + (app.port ? ' · 端口 ' + app.port : '');
+        } else {
+          meta.textContent = '点击进入';
+        }
+      }
+
+      var busy = app.state === 'running' || app.state === 'starting';
+      if (stop) stop.hidden = !busy;
+      if (chev) chev.hidden = busy;
+    }
+
+    function poll() {
+      fetch('/api/status', { cache: 'no-store' })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var byKey = {};
+          (data.apps || []).forEach(function (a) { byKey[a.key] = a; });
+          var live = 0;
+          items.forEach(function (el) {
+            var app = byKey[el.dataset.key];
+            if (!app) return;
+            if (app.state === 'running' || app.state === 'starting') live++;
+            paint(el, app);
+          });
+          if (chip && count) {
+            count.textContent = live;
+            chip.hidden = live === 0;
+          }
+        })
+        .catch(function () {})
+        .then(function () { setTimeout(poll, 1500); });
+    }
+
+    poll();
+  })();
+
+
+  // 整理模式：显示上移/下移/置顶/说明按钮
+  (function () {
+    var grid = document.getElementById('grid');
+    var btn = document.getElementById('manage');
+    if (!grid || !btn) return;
+
+    function set(on) {
+      grid.classList.toggle('manage', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.textContent = on ? '完成' : '整理';
+    }
+    set(false);
+    btn.addEventListener('click', function () {
+      set(!grid.classList.contains('manage'));
+    });
+
+    var dialog = document.getElementById('editor');
+    var form = document.getElementById('note-form');
+    var area = document.getElementById('note-text');
+    if (!dialog || !form || !area) return;
+
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('[data-edit]');
+      if (!trigger) return;
+      form.action = trigger.dataset.edit;
+      area.value = trigger.dataset.note || '';
+      dialog.showModal();
+      area.focus();
+    });
+
+    document.getElementById('note-cancel').addEventListener('click', function () {
+      dialog.close();
+    });
+  })();
+
+  // 链接卡片：添加、编辑、删除，结果写入 apps.json
+  (function () {
+    var dialog = document.getElementById('link-editor');
+    var form = document.getElementById('link-form');
+    var delForm = document.getElementById('link-delete-form');
+    var delBtn = document.getElementById('link-delete');
+    var title = document.getElementById('link-title');
+    var nameInput = document.getElementById('link-name');
+    var urlInput = document.getElementById('link-url');
+    if (!dialog || !form) return;
+
+    function open(mode, key, name, url) {
+      if (mode === 'edit') {
+        title.textContent = '编辑链接';
+        form.action = '/link/' + encodeURIComponent(key);
+        delForm.action = '/unlink/' + encodeURIComponent(key);
+        delBtn.hidden = false;
+        nameInput.value = name || '';
+        urlInput.value = url || '';
+      } else {
+        title.textContent = '添加链接';
+        form.action = '/link';
+        delBtn.hidden = true;
+        nameInput.value = '';
+        urlInput.value = '';
+      }
+      dialog.showModal();
+      (mode === 'edit' ? nameInput : urlInput).focus();
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('[data-add-link]')) {
+        open('add');
+        return;
+      }
+      var trigger = e.target.closest('[data-link-edit]');
+      if (trigger) {
+        open('edit', trigger.dataset.linkEdit, trigger.dataset.linkName, trigger.dataset.linkUrl);
+      }
+    });
+
+    document.getElementById('link-cancel').addEventListener('click', function () {
+      dialog.close();
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# 构建产物
+*.exe
+
+# 运行时生成，随机器不同而不同
+/apps/
+/apps.json
+/app.log
+/app.log.1
+
+# 编辑器与系统文件
+.idea/
+.vscode/
+.screenshots/
+.DS_Store
+Thumbs.db
