@@ -68,6 +68,14 @@ go build -trimpath -ldflags "-s -w -H windowsgui" -o portico.exe ./cmd/portico
 - `-s -w`：去掉调试信息，减小体积。
 - 注入版本号：`-ldflags "-s -w -H windowsgui -X portico/internal/version.Version=1.0.0"`。
 
+exe 的图标与版本信息由 `cmd/portico/rsrc_windows_*.syso` 提供（`go build` 会自动编入，已随源码提交）。修改 `icon.ico` 或版本号后需重新生成：
+
+```powershell
+go install github.com/tc-hib/go-winres@latest
+cd cmd/portico
+go-winres simply --arch "amd64,386,arm64" --icon "..\..\icon.ico" --manifest gui --product-name "Portico" --file-description "Portico Launcher" --original-filename "portico.exe" --file-version 1.0.0.0 --product-version 1.0.0.0
+```
+
 > 如需支持 Windows 7，需要使用 Go 1.20 工具链编译（Go 1.21 起官方不再支持 Win7/8）。
 
 ## 使用说明
