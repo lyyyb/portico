@@ -337,6 +337,17 @@
 
   .meta.failed { color: #B42318; }
 
+  /* 失败/异常说明可能较长，允许换行完整显示，不做省略 */
+  .meta.failed,
+  .meta.problem {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+    line-height: 1.4;
+    align-items: flex-start;
+  }
+
   .note {
     overflow: hidden;
     color: var(--muted);
@@ -1023,10 +1034,12 @@
       var chev = el.querySelector('.chev');
       if (!meta) return;
       if (el.dataset.external === '1') return;
+      meta.title = '';
 
       if (app.problem) {
         meta.className = 'meta problem';
         meta.textContent = app.problem;
+        meta.title = app.problem;
         if (stop) stop.hidden = true;
         if (chev) chev.hidden = true;
         return;
@@ -1035,6 +1048,7 @@
       if (app.state === 'failed') {
         meta.className = 'meta failed';
         meta.textContent = '启动失败：' + (app.error || '未知原因');
+        meta.title = meta.textContent;
       } else if (el.dataset.program === '1') {
         meta.className = 'meta';
         if (app.state === 'running') {

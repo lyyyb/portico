@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"portico/internal/platform"
@@ -56,8 +57,34 @@ func (s *Server) startProgram(in *instance) error {
 	if err := platform.ShellOpen(p.Exe, p.Args, p.Dir); err != nil {
 		return fmt.Errorf("无法启动: %w", err)
 	}
-	log.Printf("应用 %s 已通过系统打开", p.Name)
+	log.Printf("应用 %s 已通过系统打开: %s %s（工作目录 %s）", p.Name, p.Exe, strings.Join(p.Args, " "), p.Dir)
+
+	// ShellExecute 只保证“系统受理了请求”，参数错误等情况下程序会立刻退出，
+	// 这里短暂观察进程是否真的存活，失败时把原因回传给页面
+	if !platform.WaitProcess(p.Exe, 600*time.Millisecond) {
+		return fmt.Errorf("启动后未检测到进程：可能参数有误或程序立即退出%s，详见 app.log", argHint(p.Args))
+	}
+	time.Sleep(startupGrace - 600*time.Millisecond)
+	s.mu.Lock()
+	stopping := in.stopping
+	s.mu.Unlock()
+	if stopping {
+		return nil
+	}
+	if len(platform.ProcessPIDs(p.Exe)) == 0 {
+		return fmt.Errorf("程序启动后立即退出：多半是启动参数有误%s，详见 app.log", argHint(p.Args))
+	}
 	return nil
+}
+
+// argHint 提示容易写错的参数写法：数组里每个元素都是一个完整参数
+func argHint(args []string) string {
+	for _, a := range args {
+		if strings.ContainsAny(a, " \t") {
+			return fmt.Sprintf("；参数 %q 含空格，会被当作单个参数，请确认是否应拆成多项", a)
+		}
+	}
+	return ""
 }
 
 // startProgramExec 直接创建进程，用于需要注入环境变量的程序
@@ -73,6 +100,7 @@ func (s *Server) startProgramExec(in *instance) error {
 		}
 	}
 	platform.PrepareChild(cmd, p.Exe)
+	log.Printf("应用 %s 启动: %s %s（工作目录 %s，已注入环境变量）", p.Name, p.Exe, strings.Join(p.Args, " "), p.Dir)
 
 	if err := cmd.Start(); err != nil {
 		if platform.NeedsElevation(err) {
@@ -110,7 +138,7 @@ func (s *Server) startProgramExec(in *instance) error {
 			log.Printf("应用 %s 主进程已退出，但检测到同名进程仍在运行", p.Name)
 			return nil
 		}
-		return fmt.Errorf("启动后立即退出（%s）", exitReason(pr))
+		return fmt.Errorf("启动后立即退出（%s）%s", exitReason(pr), argHint(p.Args))
 	case <-time.After(startupGrace):
 	}
 	return nil
