@@ -167,6 +167,7 @@
     color: var(--muted);
     font: inherit;
     font-size: 12.5px;
+    white-space: nowrap;
     cursor: pointer;
     transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
   }
@@ -760,6 +761,13 @@
     .topbar { margin-bottom: 14px; }
     .grid { grid-template-columns: 1fr; }
     .empty { padding: 32px 22px; }
+
+    /* 窄屏：搜索独占一行，三个按钮等分下一行，避免文字被压扁 */
+    .toolbar { flex-wrap: wrap; }
+    .search { flex: 1 1 100%; max-width: none; }
+    .toolbar form { display: flex; flex: 1 1 0; }
+    .manage-btn { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+    .toolbar form .manage-btn { width: 100%; }
   }
 </style>
 </head>
