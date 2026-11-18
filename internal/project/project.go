@@ -16,23 +16,14 @@ const DirName = "apps"
 
 const readmeText = `Portico（应用坞）：一个单文件本地应用启动器。
 
-把静态前端产物或自带后端的单文件程序放在这里，一个项目一个目录。
+把静态前端产物或自带后端的单文件程序放在这里，一个应用一个目录。
 
 方式一：静态前端
   子目录内直接包含 index.html（即 dist 里的内容，不要再套一层 dist）
 
 方式二：单文件程序（前端已打包进 exe）
-  子目录内放一个 exe，点击卡片时由启动器直接启动它
-  可选 app.json（只放启动参数，显示名见下方 apps.json）：
-    {
-      "exe": "server.exe",
-      "args": ["--silent"],
-      "env": {"APP_ENV": "prod"}
-    }
-  - exe：目录内有多个 exe 时指定用哪个（默认优先选与目录同名的，
-        其次忽略 Uninstall 等卸载程序；仍无法确定才需要手写）
-  - args：附加启动参数
-  - env：额外环境变量
+  子目录内放一个 exe，点击卡片时由启动器直接启动它。
+  目录内有多个 exe 时，在启动器页面卡片上选择主程序即可。
 
 外部链接（不建目录）
   只想收藏一个网址时，在启动器页面点"添加链接"，填名称和地址即可。
@@ -43,30 +34,36 @@ const readmeText = `Portico（应用坞）：一个单文件本地应用启动�
     }
 
 卡片图标（可选）
-  项目目录里放 icon.png / icon.ico / favicon.ico 之一即可，
+  应用目录里放 icon.png / icon.ico / favicon.ico 之一即可，
   会显示在卡片左侧；没有则使用名称首字母色块。
 
 无法识别的目录
-  缺少 index.html、或有多个 exe 又没在 app.json 指定主程序时，
+  缺少 index.html、或有多个 exe 又没选择主程序时，
   卡片仍会显示，但标注原因，按提示补齐文件即可。
 
-应用说明与排序（集中在启动器同目录的 apps.json）
-  显示名、说明、置顶、排序统一保存在 Portico 同目录的 apps.json 里，
-  不再写进各项目目录，方便统一查看和备份。
-  也可以直接在启动器页面点"说明"或"整理"修改，效果相同。
+显示与启动配置（集中在启动器同目录的 apps.json）
+  显示名、说明、置顶、排序、主程序、启动参数统一保存在这里，
+  不再写进各应用目录，方便统一查看和备份。
+  也可以直接在启动器页面操作，效果相同。
   格式：
     {
       "订单系统": {
         "name": "订单系统",
         "note": "给销售部用的下单系统",
         "pin": true,
-        "order": 10
+        "order": 10,
+        "exe": "server.exe",
+        "args": ["--silent"],
+        "env": {"APP_ENV": "prod"}
       }
     }
   - name：卡片显示名，不写则用目录名
   - note：卡片说明
   - pin：true 表示置顶
   - order：排序值，越小越靠前
+  - exe：多个 exe 时选择的主程序
+  - args：附加启动参数
+  - env：额外环境变量
 
 启动器不关心程序监听什么端口，也不跳转页面：点击卡片启动进程，
 在启动器页面显示运行状态；进程退出后状态自动回到未启动。
@@ -102,6 +99,9 @@ type Project struct {
 	Exe  string
 	Args []string
 	Env  map[string]string
+
+	// Exes 是目录内的候选可执行文件名，供界面选择主程序
+	Exes []string
 
 	// 仅 KindLink 使用：跳转地址
 	URL string
@@ -158,7 +158,6 @@ func (s *Store) Scan() ([]*Project, error) {
 			continue
 		}
 		dir := filepath.Join(s.root, e.Name())
-		meta := readMeta(dir)
 		ce := cfg[e.Name()]
 
 		p := &Project{
@@ -177,15 +176,18 @@ func (s *Store) Scan() ([]*Project, error) {
 		case hasIndex(dir):
 			p.Kind = KindStatic
 		default:
-			exe := findExe(dir, meta.Exe)
+			exe := findExe(dir, ce.Exe)
+			found := listExe(dir)
 			switch {
 			case exe != "":
 				p.Kind, p.Exe = KindProgram, exe
-				p.Args, p.Env = meta.Args, meta.Env
-			case meta.Exe != "":
-				p.Problem = "app.json 指定的 exe 不存在：" + meta.Exe
-			case len(listExe(dir)) > 1:
-				p.Problem = "目录内有多个 exe，请在 app.json 指定主程序"
+				p.Args, p.Env = ce.Args, ce.Env
+			case ce.Exe != "":
+				p.Problem = "配置的 exe 不存在：" + ce.Exe
+				p.Exes = exeNames(found)
+			case len(found) > 1:
+				p.Problem = "目录内有多个 exe，请选择主程序"
+				p.Exes = exeNames(found)
 			default:
 				p.Problem = "缺少 index.html"
 			}
@@ -226,7 +228,7 @@ func hasIndex(dir string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// findExe 定位目录内的可执行文件：优先 app.json 指定，否则要求唯一
+// findExe 定位目录内的可执行文件：优先 apps.json 指定，否则按规则挑选
 func findExe(dir, want string) string {
 	if want != "" {
 		p := filepath.Join(dir, want)
@@ -285,6 +287,15 @@ func pickMainExe(found []string, dirName string) string {
 
 func exeStem(name string) string {
 	return strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
+}
+
+// exeNames 把完整路径转换成界面展示用的文件名
+func exeNames(found []string) []string {
+	names := make([]string, 0, len(found))
+	for _, f := range found {
+		names = append(names, filepath.Base(f))
+	}
+	return names
 }
 
 func isUninstaller(name string) bool {

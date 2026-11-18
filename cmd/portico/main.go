@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("读取 %s 失败: %v", store.Root(), err)
 	}
 	if len(projects) == 0 {
-		log.Printf("未发现项目，请把前端打包产物放入 %s", store.Root())
+		log.Printf("未发现应用，请把前端打包产物放入 %s", store.Root())
 	}
 
 	ln, err := net.Listen("tcp", launcher.Addr)
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	srv := launcher.New(store, projects)
-	log.Printf("启动器: %s（发现 %d 个项目，目录 %s）", launcher.URL(), len(projects), store.Root())
+	log.Printf("启动器: %s（发现 %d 个应用，目录 %s）", launcher.URL(), len(projects), store.Root())
 	go func() {
 		if err := http.Serve(ln, srv.Routes()); err != nil {
 			log.Printf("启动器已停止: %v", err)

@@ -34,7 +34,12 @@ var (
 	procMessageBox          = user32.NewProc("MessageBoxW")
 	procShellNotifyIcon     = shell32.NewProc("Shell_NotifyIconW")
 	procGetModuleHandle     = kernel32.NewProc("GetModuleHandleW")
+	procRegisterWindowMsg   = user32.NewProc("RegisterWindowMessageW")
+	procPostMessage         = user32.NewProc("PostMessageW")
 )
+
+// taskbarCreatedMsg 是 Explorer 重启后广播的消息，收到后需要重新添加托盘图标
+var taskbarCreatedMsg uint32
 
 const (
 	wmDestroy       = 0x0002
@@ -74,7 +79,7 @@ const (
 	cmdAbout   = 1005
 	cmdAppBase = 2000 // 每个运行中的应用占两个命令 ID：打开、停止
 
-	hwndMessage = ^uintptr(2) // (HWND)-3，仅接收消息的窗口
+	wsPopup = 0x80000000
 )
 
 type wndClassEx struct {
@@ -162,12 +167,20 @@ func (t *tray) start() error {
 		return e
 	}
 
+	// 用普通顶层窗口（不可见）而不是 message-only 窗口：
+	// 只有顶层窗口才能被设为前台，TrackPopupMenu 才能正常弹出和关闭
 	hwnd, _, e := procCreateWindowEx.Call(
-		0, uintptr(unsafe.Pointer(className)), 0, 0,
-		0, 0, 0, 0, hwndMessage, 0, hInst, 0,
+		0, uintptr(unsafe.Pointer(className)), 0, wsPopup,
+		0, 0, 0, 0, 0, 0, hInst, 0,
 	)
 	if hwnd == 0 {
 		return e
+	}
+
+	if name, err := syscall.UTF16PtrFromString("TaskbarCreated"); err == nil {
+		if r, _, _ := procRegisterWindowMsg.Call(uintptr(unsafe.Pointer(name))); r != 0 {
+			taskbarCreatedMsg = uint32(r)
+		}
 	}
 
 	t.hwnd = syscall.Handle(hwnd)
@@ -228,7 +241,11 @@ func (t *tray) showMenu() {
 			if sub == 0 {
 				continue
 			}
-			appendItem(sub, mfString, uintptr(cmdAppBase+i*2), "打开页面")
+			label := "显示窗口"
+			if app.Web {
+				label = "打开页面"
+			}
+			appendItem(sub, mfString, uintptr(cmdAppBase+i*2), label)
 			appendItem(sub, mfString, uintptr(cmdAppBase+i*2+1), "停止")
 			appendItem(menu, mfPopup, sub, app.Name)
 		}
@@ -247,6 +264,8 @@ func (t *tray) showMenu() {
 		menu, tpmRightButton|tpmBottomAlign,
 		uintptr(uint32(pt.x)), uintptr(uint32(pt.y)), 0, uintptr(t.hwnd), 0,
 	)
+	// 让菜单正常关闭，避免下一次展开时焦点异常
+	procPostMessage.Call(uintptr(t.hwnd), 0, 0, 0)
 }
 
 func (t *tray) loop() {
@@ -318,6 +337,13 @@ func wndProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 	case wmDestroy:
 		procPostQuitMessage.Call(0)
+		return 0
+	}
+	if taskbarCreatedMsg != 0 && msg == taskbarCreatedMsg {
+		// Explorer 重启后托盘里的图标会消失，这里重新加回去
+		if t != nil {
+			_ = t.addIcon()
+		}
 		return 0
 	}
 	r, _, _ := procDefWindowProc.Call(uintptr(hwnd), uintptr(msg), wParam, lParam)

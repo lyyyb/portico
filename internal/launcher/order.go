@@ -53,7 +53,7 @@ func (s *Server) moveInstance(in *instance, delta int) {
 		}
 		item.p.Order = order
 		if err := s.store.SaveOrder(item.p); err != nil {
-			log.Printf("保存项目 %s 排序失败: %v", item.p.Name, err)
+			log.Printf("保存应用 %s 排序失败: %v", item.p.Name, err)
 		}
 	}
 }

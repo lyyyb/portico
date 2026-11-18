@@ -31,7 +31,7 @@ func (s *Server) openApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.ensure(in); err != nil {
-		writeError(w, "无法启动该项目", err)
+		writeError(w, "无法启动该应用", err)
 		return
 	}
 
@@ -63,6 +63,22 @@ func (s *Server) stopApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.stop(in)
+	home(w, r)
+}
+
+// chooseExe 把用户选择的主程序写入 apps.json
+func (s *Server) chooseExe(w http.ResponseWriter, r *http.Request) {
+	in := s.route(r)
+	if in == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("exe"))
+	if err := s.store.SaveExe(in.p, name); err != nil {
+		writeError(w, "无法保存主程序", err)
+		return
+	}
 	home(w, r)
 }
 

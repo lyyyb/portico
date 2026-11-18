@@ -110,3 +110,54 @@ func TestAddAndDeleteLink(t *testing.T) {
 		}
 	}
 }
+
+func TestChooseExeFromPage(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, project.DirName, "工具")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"a.exe", "b.exe"} {
+		if err := os.WriteFile(filepath.Join(dir, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	store, err := project.OpenAt(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := store.Scan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := New(store, list)
+
+	rec := httptest.NewRecorder()
+	s.Routes().ServeHTTP(rec, httptest.NewRequest("GET", "http://127.0.0.1:18080/", nil))
+	body := rec.Body.String()
+	if !strings.Contains(body, "exe-pick") || !strings.Contains(body, "a.exe") {
+		t.Fatalf("页面应提供 exe 选择框: %s", body)
+	}
+
+	req := httptest.NewRequest("POST", "http://127.0.0.1:18080/exe/工具", strings.NewReader("exe=a.exe"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec = httptest.NewRecorder()
+	s.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("选择程序应重定向，实际 %d: %s", rec.Code, rec.Body.String())
+	}
+
+	raw, err := os.ReadFile(filepath.Join(base, project.ConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"exe": "a.exe"`) {
+		t.Errorf("apps.json 未写入主程序: %s", raw)
+	}
+
+	list, _ = store.Scan()
+	if len(list) != 1 || list[0].Kind != project.KindProgram || filepath.Base(list[0].Exe) != "a.exe" {
+		t.Errorf("重新扫描后应识别为程序: %+v", list)
+	}
+}

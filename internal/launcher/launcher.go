@@ -124,6 +124,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /open-dir", s.openDir)
 	mux.HandleFunc("POST /start/{key}", s.startApp)
 	mux.HandleFunc("POST /stop/{key}", s.stopApp)
+	mux.HandleFunc("POST /exe/{key}", s.chooseExe)
 	mux.HandleFunc("POST /note/{key}", s.noteApp)
 	mux.HandleFunc("POST /pin/{key}", s.pinApp)
 	mux.HandleFunc("POST /move/{key}", s.moveApp)
@@ -171,7 +172,7 @@ func localHost(hostport string) bool {
 func (s *Server) sync() {
 	projects, err := s.store.Scan()
 	if err != nil {
-		log.Printf("扫描项目失败: %v", err)
+		log.Printf("扫描应用失败: %v", err)
 		return
 	}
 
@@ -199,7 +200,7 @@ func (s *Server) sync() {
 	s.mu.Unlock()
 
 	for _, in := range removed {
-		log.Printf("项目 %s 已移除", in.p.Name)
+		log.Printf("应用 %s 已移除", in.p.Name)
 		s.stop(in)
 	}
 }
@@ -283,29 +284,50 @@ func (s *Server) RunningApps() []platform.TrayApp {
 	var out []platform.TrayApp
 	for _, in := range s.instances {
 		if s.running(in) {
-			out = append(out, platform.TrayApp{Key: in.p.Key, Name: in.p.Name})
+			out = append(out, platform.TrayApp{
+				Key:  in.p.Key,
+				Name: in.p.Name,
+				Web:  in.p.Kind != project.KindProgram,
+			})
 		}
 	}
 	return out
 }
 
-// OpenApp 打开某个运行中应用的页面；没有可打开的地址时回到启动器首页
+// OpenApp 打开某个运行中应用的界面：桌面程序把已有窗口切到前台，
+// 没有可显示窗口时不做任何跳转；静态站点打开本地服务
 func (s *Server) OpenApp(key string) {
-	target := URL()
+	var pids []int
+	target := ""
+	isProgram := false
 
 	s.mu.Lock()
 	for _, in := range s.instances {
 		if in.p.Key != key {
 			continue
 		}
-		if in.url != "" {
+		if in.p.Kind == project.KindProgram {
+			isProgram = true
+			if in.proc != nil {
+				pids = append(pids, in.proc.cmd.Process.Pid)
+			}
+			pids = append(pids, s.pidsOf(in.p.Exe)...)
+		} else if in.url != "" {
 			target = in.url
 		}
 		break
 	}
 	s.mu.Unlock()
 
-	platform.OpenBrowser(target)
+	if isProgram {
+		if !platform.ActivateWindows(pids) {
+			log.Printf("应用 %s 没有可显示的窗口", key)
+		}
+		return
+	}
+	if target != "" {
+		platform.OpenBrowser(target)
+	}
 }
 
 // StopApp 停止单个应用

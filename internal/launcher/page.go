@@ -18,6 +18,7 @@ type pageApp struct {
 	NoteLink  string
 	PinLink   string
 	MoveLink  string
+	ExeLink   string
 	Initial   string
 	Hue       int
 	Index     int
@@ -26,6 +27,8 @@ type pageApp struct {
 	Port      int
 	Program   bool
 	External  bool // 外部链接卡片
+
+	Exes []string // 多个 exe 时供用户选择主程序
 
 	Dir     string // 项目目录，用于提示
 	Icon    string // 图标地址，没有图标时为空
@@ -100,6 +103,7 @@ func buildPage(instances []*instance, appsPath string, running func(*instance) b
 			NoteLink:  "/note/" + key,
 			PinLink:   "/pin/" + key,
 			MoveLink:  "/move/" + key,
+			ExeLink:   "/exe/" + key,
 			Initial:   initial(in.p.Name),
 			Hue:       hue(in.p.Name),
 			Started:   on,
@@ -107,6 +111,7 @@ func buildPage(instances []*instance, appsPath string, running func(*instance) b
 			Port:      in.port,
 			Program:   in.p.Kind == project.KindProgram,
 			External:  in.p.Kind == project.KindLink,
+			Exes:      in.p.Exes,
 			Dir:       in.p.Dir,
 			Icon:      icon,
 			URL:       in.p.URL,

@@ -58,17 +58,18 @@ func TestScanProgram(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "订单系统", "server.exe"), "")
 	writeFile(t, filepath.Join(root, "报表中心", "api.exe"), "")
-	writeFile(t, filepath.Join(root, "报表中心", "app.json"), `{
-		"args": ["--port", "{port}"],
-		"port": 9001,
-		"env": {"APP_ENV": "prod"}
-	}`)
 	// 目录里同时有静态入口时按静态项目处理
 	writeFile(t, filepath.Join(root, "混合", "index.html"), "ok")
 	writeFile(t, filepath.Join(root, "混合", "other.exe"), "")
 
 	store := newTestStore(t, root)
-	writeFile(t, store.config, `{"报表中心":{"name":"经营报表"}}`)
+	writeFile(t, store.config, `{
+		"报表中心": {
+			"name": "经营报表",
+			"args": ["--port", "{port}"],
+			"env": {"APP_ENV": "prod"}
+		}
+	}`)
 	list, err := store.Scan()
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +96,7 @@ func TestScanProgram(t *testing.T) {
 		t.Fatalf("报表中心应识别为程序型: %+v", report)
 	}
 	if report.Name != "经营报表" || len(report.Args) != 2 {
-		t.Errorf("app.json 未正确解析: %+v", report)
+		t.Errorf("apps.json 未正确解析: %+v", report)
 	}
 	if report.Env["APP_ENV"] != "prod" {
 		t.Errorf("环境变量未正确解析: %v", report.Env)
@@ -331,5 +332,48 @@ func TestNormalizeLink(t *testing.T) {
 		if _, err := NormalizeLink(bad); err == nil {
 			t.Errorf("非法地址 %q 应报错", bad)
 		}
+	}
+}
+
+func TestChooseExeFromCandidates(t *testing.T) {
+	base := t.TempDir()
+	store, err := OpenAt(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := filepath.Join(base, DirName, "工具")
+	writeFile(t, filepath.Join(dir, "a.exe"), "")
+	writeFile(t, filepath.Join(dir, "b.exe"), "")
+
+	projects, err := store.Scan()
+	if err != nil || len(projects) != 1 {
+		t.Fatalf("扫描失败: %v, 项目数 %d", err, len(projects))
+	}
+	p := projects[0]
+	if p.Problem == "" || len(p.Exes) != 2 {
+		t.Fatalf("多个 exe 应给出候选: problem=%q exes=%v", p.Problem, p.Exes)
+	}
+
+	if err := store.SaveExe(p, "../a.exe"); err == nil {
+		t.Error("带路径的程序名应被拒绝")
+	}
+	if err := store.SaveExe(p, "a.exe"); err != nil {
+		t.Fatalf("保存主程序失败: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(base, ConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"exe": "a.exe"`) {
+		t.Errorf("apps.json 未记录主程序: %s", raw)
+	}
+
+	projects, err = store.Scan()
+	if err != nil || len(projects) != 1 {
+		t.Fatalf("重新扫描失败: %v", err)
+	}
+	if projects[0].Kind != KindProgram || filepath.Base(projects[0].Exe) != "a.exe" {
+		t.Errorf("应识别为程序 a.exe，实际 kind=%v exe=%s", projects[0].Kind, projects[0].Exe)
 	}
 }

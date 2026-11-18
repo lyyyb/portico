@@ -17,29 +17,18 @@ const ConfigFile = "apps.json"
 // linkPrefix 是外部链接在 apps.json 里的 key 前缀，与目录项目区分开
 const linkPrefix = "link:"
 
-// appEntry 是 apps.json 里单个应用的展示配置；url 非空表示这是一个链接卡片
+// appEntry 是 apps.json 里单个应用的配置；url 非空表示这是一个链接卡片
 type appEntry struct {
 	Name  string `json:"name,omitempty"`
 	Note  string `json:"note,omitempty"`
 	Pin   bool   `json:"pin,omitempty"`
 	Order int    `json:"order,omitempty"`
 	URL   string `json:"url,omitempty"`
-}
 
-// appMeta 是项目目录内 app.json 的内容，只包含启动参数
-type appMeta struct {
+	// 以下三项是程序型应用的启动参数
 	Exe  string            `json:"exe,omitempty"`
 	Args []string          `json:"args,omitempty"`
 	Env  map[string]string `json:"env,omitempty"`
-}
-
-func readMeta(dir string) appMeta {
-	var m appMeta
-	b, err := os.ReadFile(filepath.Join(dir, "app.json"))
-	if err == nil {
-		_ = json.Unmarshal(b, &m)
-	}
-	return m
 }
 
 // readConfig 读取集中配置；文件不存在或格式有误时返回空配置
@@ -90,6 +79,29 @@ func (s *Store) SaveOrder(p *Project) error {
 	return s.updateEntry(p.Key, func(e *appEntry) {
 		e.Pin = p.Pin
 		e.Order = p.Order
+	})
+}
+
+// SaveExe 把用户选择的主程序写入 apps.json，保留其余展示配置
+func (s *Store) SaveExe(p *Project, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" || filepath.Base(name) != name {
+		return fmt.Errorf("非法的程序名: %q", name)
+	}
+
+	valid := false
+	for _, f := range listExe(p.Dir) {
+		if strings.EqualFold(filepath.Base(f), name) {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return fmt.Errorf("目录内没有 %s", name)
+	}
+
+	return s.updateEntry(p.Key, func(e *appEntry) {
+		e.Exe = name
 	})
 }
 
@@ -185,10 +197,16 @@ func (s *Store) updateEntry(key string, fn func(*appEntry)) error {
 
 	e := cfg[key]
 	fn(&e)
-	if e == (appEntry{}) {
+	if entryEmpty(e) {
 		delete(cfg, key)
 	} else {
 		cfg[key] = e
 	}
 	return writeConfig(s.config, cfg)
+}
+
+// entryEmpty 判断条目是否没有任何配置，用于清理空条目
+func entryEmpty(e appEntry) bool {
+	return e.Name == "" && e.Note == "" && !e.Pin && e.Order == 0 &&
+		e.URL == "" && e.Exe == "" && len(e.Args) == 0 && len(e.Env) == 0
 }
