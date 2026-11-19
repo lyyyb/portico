@@ -377,3 +377,48 @@ func TestChooseExeFromCandidates(t *testing.T) {
 		t.Errorf("应识别为程序 a.exe，实际 kind=%v exe=%s", projects[0].Kind, projects[0].Exe)
 	}
 }
+
+// 程序放在 bin/ 子目录时，apps.json 里用相对路径指定也要能识别并保存
+func TestNestedExe(t *testing.T) {
+	base := t.TempDir()
+	store, err := OpenAt(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := filepath.Join(base, DirName, "dufs")
+	writeFile(t, filepath.Join(dir, "bin", "dufs.exe"), "")
+	writeFile(t, filepath.Join(base, ConfigFile), `{"dufs":{"exe":"bin/dufs.exe"}}`)
+
+	projects, err := store.Scan()
+	if err != nil || len(projects) != 1 {
+		t.Fatalf("扫描失败: %v, 项目数 %d", err, len(projects))
+	}
+	p := projects[0]
+	if p.Kind != KindProgram || filepath.Base(p.Exe) != "dufs.exe" {
+		t.Fatalf("应识别 bin/dufs.exe，实际 kind=%v exe=%s problem=%q", p.Kind, p.Exe, p.Problem)
+	}
+
+	// 反斜杠写法等价
+	if got := findExe(dir, `bin\dufs.exe`); got == "" {
+		t.Error("反斜杠路径应同样可用")
+	}
+	// 越界路径必须拒绝
+	for _, bad := range []string{"../dufs.exe", `C:\Windows\notepad.exe`, "bin/../../dufs.exe"} {
+		if got := findExe(dir, bad); got != "" {
+			t.Errorf("非法路径 %q 不应被接受: %s", bad, got)
+		}
+	}
+
+	// 界面保存时允许子目录，并统一写成 / 分隔
+	if err := store.SaveExe(p, `bin\dufs.exe`); err != nil {
+		t.Fatalf("保存子目录程序失败: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(base, ConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"exe": "bin/dufs.exe"`) {
+		t.Errorf("apps.json 应记录 bin/dufs.exe: %s", raw)
+	}
+}

@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -231,8 +232,12 @@ func hasIndex(dir string) bool {
 // findExe 定位目录内的可执行文件：优先 apps.json 指定，否则按规则挑选
 func findExe(dir, want string) string {
 	if want != "" {
-		p := filepath.Join(dir, want)
-		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+		rel, ok := safeRel(want)
+		if !ok {
+			return ""
+		}
+		p := filepath.Join(dir, rel)
+		if info, err := os.Stat(p); err == nil && !info.IsDir() && isExecutable(p, info.Name()) {
 			return p
 		}
 		return ""
@@ -243,6 +248,24 @@ func findExe(dir, want string) string {
 		return found[0]
 	}
 	return pickMainExe(found, filepath.Base(dir))
+}
+
+// safeRel 把配置里的 exe 路径规范成应用目录内的相对路径：
+// 允许 bin/app.exe 这类子目录写法（/ 与 \ 均可），拒绝绝对路径和 .. 越界
+func safeRel(name string) (string, bool) {
+	name = strings.TrimSpace(strings.ReplaceAll(name, `\`, "/"))
+	if name == "" {
+		return "", false
+	}
+	clean := path.Clean(name)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(clean) {
+		return "", false
+	}
+	rel := filepath.FromSlash(clean)
+	if filepath.IsAbs(rel) || filepath.VolumeName(rel) != "" {
+		return "", false
+	}
+	return rel, true
 }
 
 // listExe 列出目录内的全部可执行文件

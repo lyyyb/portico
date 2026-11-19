@@ -84,24 +84,21 @@ func (s *Store) SaveOrder(p *Project) error {
 
 // SaveExe 把用户选择的主程序写入 apps.json，保留其余展示配置
 func (s *Store) SaveExe(p *Project, name string) error {
-	name = strings.TrimSpace(name)
-	if name == "" || filepath.Base(name) != name {
-		return fmt.Errorf("非法的程序名: %q", name)
+	rel, ok := safeRel(name)
+	if !ok {
+		return fmt.Errorf("非法的程序路径: %q", name)
 	}
 
-	valid := false
-	for _, f := range listExe(p.Dir) {
-		if strings.EqualFold(filepath.Base(f), name) {
-			valid = true
-			break
-		}
-	}
-	if !valid {
+	full := filepath.Join(p.Dir, rel)
+	info, err := os.Stat(full)
+	if err != nil || info.IsDir() || !isExecutable(full, info.Name()) {
 		return fmt.Errorf("目录内没有 %s", name)
 	}
 
+	// 统一存成 / 分隔，既好读也避免 JSON 里的反斜杠转义问题
+	stored := filepath.ToSlash(rel)
 	return s.updateEntry(p.Key, func(e *appEntry) {
-		e.Exe = name
+		e.Exe = stored
 	})
 }
 

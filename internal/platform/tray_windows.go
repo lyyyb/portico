@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"unsafe"
 )
@@ -71,6 +72,7 @@ const (
 
 	mbOK       = 0x00000000
 	mbIconInfo = 0x00000040
+	mbIconErr  = 0x00000010
 
 	cmdOpen    = 1001
 	cmdQuit    = 1002
@@ -141,6 +143,12 @@ var activeTray *tray
 
 // RunTray 创建托盘图标并进入消息循环，阻塞直到用户选择退出
 func RunTray(h TrayHandlers) {
+	// 窗口的消息队列归属于创建它的 OS 线程。Go 的 goroutine 可能被调度到
+	// 其它线程上执行，消息循环一旦换线程就收不到托盘回调，表现为图标还在、
+	// 点击无任何反应。这里把消息循环所在线程固定下来。
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	t := &tray{handlers: h}
 	if err := t.start(); err != nil {
 		// 托盘不可用时不影响主功能，继续托管页面
@@ -271,8 +279,12 @@ func (t *tray) showMenu() {
 func (t *tray) loop() {
 	var m windowMsg
 	for {
-		r, _, _ := procGetMessage.Call(uintptr(unsafe.Pointer(&m)), 0, 0, 0)
-		if int32(r) <= 0 {
+		r, _, e := procGetMessage.Call(uintptr(unsafe.Pointer(&m)), 0, 0, 0)
+		if int32(r) == -1 {
+			log.Printf("托盘消息循环异常退出: %v", e)
+			return
+		}
+		if int32(r) == 0 {
 			return
 		}
 		procTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
@@ -342,7 +354,9 @@ func wndProc(hwnd syscall.Handle, msg uint32, wParam, lParam uintptr) uintptr {
 	if taskbarCreatedMsg != 0 && msg == taskbarCreatedMsg {
 		// Explorer 重启后托盘里的图标会消失，这里重新加回去
 		if t != nil {
-			_ = t.addIcon()
+			if err := t.addIcon(); err != nil {
+				log.Printf("重新添加托盘图标失败: %v", err)
+			}
 		}
 		return 0
 	}

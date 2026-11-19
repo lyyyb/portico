@@ -25,7 +25,10 @@ func main() {
 
 	projects, err := store.Scan()
 	if err != nil {
-		log.Fatalf("读取 %s 失败: %v", store.Root(), err)
+		// 配置文件有误时进程会直接退出，GUI 程序没有控制台，必须弹窗告知
+		log.Printf("读取配置失败: %v", err)
+		platform.ShowError("Portico 配置有误", fmt.Sprintf("%v\n\n请修正启动器目录下的 %s 后重新启动 Portico。", err, project.ConfigFile))
+		return
 	}
 	if len(projects) == 0 {
 		log.Printf("未发现应用，请把前端打包产物放入 %s", store.Root())

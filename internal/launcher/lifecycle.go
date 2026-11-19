@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -54,10 +55,10 @@ func (s *Server) startProgram(in *instance) error {
 	if len(p.Env) > 0 {
 		return s.startProgramExec(in)
 	}
-	if err := platform.ShellOpen(p.Exe, p.Args, p.Dir); err != nil {
+	if err := platform.ShellOpen(p.Exe, p.Args, filepath.Dir(p.Exe)); err != nil {
 		return fmt.Errorf("无法启动: %w", err)
 	}
-	log.Printf("应用 %s 已通过系统打开: %s %s（工作目录 %s）", p.Name, p.Exe, strings.Join(p.Args, " "), p.Dir)
+	log.Printf("应用 %s 已通过系统打开: %s %s（工作目录 %s）", p.Name, p.Exe, strings.Join(p.Args, " "), filepath.Dir(p.Exe))
 
 	// ShellExecute 只保证“系统受理了请求”，参数错误等情况下程序会立刻退出，
 	// 这里短暂观察进程是否真的存活，失败时把原因回传给页面
@@ -92,7 +93,8 @@ func (s *Server) startProgramExec(in *instance) error {
 	p := in.p
 
 	cmd := exec.Command(p.Exe, p.Args...)
-	cmd.Dir = p.Dir
+	// 工作目录与资源管理器双击一致：程序所在目录
+	cmd.Dir = filepath.Dir(p.Exe)
 	if len(p.Env) > 0 {
 		cmd.Env = os.Environ()
 		for k, v := range p.Env {
@@ -100,13 +102,13 @@ func (s *Server) startProgramExec(in *instance) error {
 		}
 	}
 	platform.PrepareChild(cmd, p.Exe)
-	log.Printf("应用 %s 启动: %s %s（工作目录 %s，已注入环境变量）", p.Name, p.Exe, strings.Join(p.Args, " "), p.Dir)
+	log.Printf("应用 %s 启动: %s %s（工作目录 %s，已注入环境变量）", p.Name, p.Exe, strings.Join(p.Args, " "), filepath.Dir(p.Exe))
 
 	if err := cmd.Start(); err != nil {
 		if platform.NeedsElevation(err) {
 			// 目标程序带 requireAdministrator 清单，直接 Start 会被系统拒绝，
 			// 改走 UAC 授权，与双击时的行为一致
-			if eerr := platform.RunElevated(p.Exe, p.Args, p.Dir); eerr != nil {
+			if eerr := platform.RunElevated(p.Exe, p.Args, filepath.Dir(p.Exe)); eerr != nil {
 				return fmt.Errorf("需要管理员权限: %w", eerr)
 			}
 			log.Printf("应用 %s 需要管理员权限，已请求系统授权启动", p.Name)
